@@ -478,18 +478,31 @@ def handler(job):
 
     prompt["270"]["inputs"]["value"] = max_frame
 
-    # [PATCH] 고VRAM GPU 속도 오버라이드 (class_type 기반 — 노드 ID 무관)
+    # [PATCH] 품질/속도 오버라이드 (class_type 기반 — 노드 ID 무관)
     _fo = job_input.get("force_offload")
     _bts = job_input.get("blocks_to_swap")
-    if _fo is not None or _bts is not None:
+    _steps = job_input.get("steps")            # 립싱크 품질: 6(기본,distill) → 8~10 올리면 싱크 타이트
+    _cfg = job_input.get("cfg")                # distill 끄고 풀품질 갈 때만 (예: 5)
+    _lora_strength = job_input.get("lora_strength")  # lightx2v distill LoRA 강도 (기본 1.0)
+    if any(v is not None for v in (_fo, _bts, _steps, _cfg, _lora_strength)):
         for _nid, _node in prompt.items():
             _ct = _node.get("class_type", "")
-            if _ct == "WanVideoSampler" and _fo is not None:
-                _node["inputs"]["force_offload"] = bool(_fo)
-                logger.info(f"[PATCH] node {_nid} WanVideoSampler.force_offload={_fo}")
+            if _ct == "WanVideoSampler":
+                if _fo is not None:
+                    _node["inputs"]["force_offload"] = bool(_fo)
+                    logger.info(f"[PATCH] node {_nid} WanVideoSampler.force_offload={_fo}")
+                if _steps is not None:
+                    _node["inputs"]["steps"] = int(_steps)
+                    logger.info(f"[PATCH] node {_nid} WanVideoSampler.steps={_steps}")
+                if _cfg is not None:
+                    _node["inputs"]["cfg"] = float(_cfg)
+                    logger.info(f"[PATCH] node {_nid} WanVideoSampler.cfg={_cfg}")
             if _ct == "WanVideoBlockSwap" and _bts is not None:
                 _node["inputs"]["blocks_to_swap"] = int(_bts)
                 logger.info(f"[PATCH] node {_nid} WanVideoBlockSwap.blocks_to_swap={_bts}")
+            if _ct == "WanVideoLoraSelect" and _lora_strength is not None:
+                _node["inputs"]["strength"] = float(_lora_strength)
+                logger.info(f"[PATCH] node {_nid} WanVideoLoraSelect.strength={_lora_strength}")
 
     # 다중 인물용 두 번째 오디오 설정
     if person_count == "multi":
