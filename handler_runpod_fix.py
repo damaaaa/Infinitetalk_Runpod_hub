@@ -9,6 +9,7 @@ import urllib.request
 import urllib.parse
 import binascii  # Base64 에러 처리를 위해 import
 import subprocess
+import time  # [PATCH] 출력 폴더 스캔 폴백에서 사용
 import librosa
 import shutil
 
@@ -172,6 +173,13 @@ def get_videos(ws, prompt, input_type="image", person_count="single"):
         out = ws.recv()
         if isinstance(out, str):
             message = json.loads(out)
+            if message["type"] == "execution_error":
+                # [PATCH] ComfyUI 노드 에러를 그대로 표면화 (없으면 '비디오 없음'으로 가려짐)
+                _ed = message.get("data", {})
+                raise RuntimeError(
+                    f"[PATCH] ComfyUI 실행 에러: node={_ed.get('node_id')} ({_ed.get('node_type')}) "
+                    f"exception={_ed.get('exception_type')}: {_ed.get('exception_message')}"
+                )
             if message["type"] == "executing":
                 data = message["data"]
                 if data["node"] is not None:
