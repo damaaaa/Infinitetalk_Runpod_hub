@@ -470,6 +470,19 @@ def handler(job):
 
     prompt["270"]["inputs"]["value"] = max_frame
 
+    # [PATCH] 고VRAM GPU 속도 오버라이드 (class_type 기반 — 노드 ID 무관)
+    _fo = job_input.get("force_offload")
+    _bts = job_input.get("blocks_to_swap")
+    if _fo is not None or _bts is not None:
+        for _nid, _node in prompt.items():
+            _ct = _node.get("class_type", "")
+            if _ct == "WanVideoSampler" and _fo is not None:
+                _node["inputs"]["force_offload"] = bool(_fo)
+                logger.info(f"[PATCH] node {_nid} WanVideoSampler.force_offload={_fo}")
+            if _ct == "WanVideoBlockSwap" and _bts is not None:
+                _node["inputs"]["blocks_to_swap"] = int(_bts)
+                logger.info(f"[PATCH] node {_nid} WanVideoBlockSwap.blocks_to_swap={_bts}")
+
     # 다중 인물용 두 번째 오디오 설정
     if person_count == "multi":
         # 워크플로우 타입에 따라 두 번째 오디오 노드 설정
