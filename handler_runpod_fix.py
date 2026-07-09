@@ -504,6 +504,19 @@ def handler(job):
                 _node["inputs"]["strength"] = float(_lora_strength)
                 logger.info(f"[PATCH] node {_nid} WanVideoLoraSelect.strength={_lora_strength}")
 
+    # [PATCH] 립싱크 강도 오버라이드 — 공식 권장: LoRA 시 audio_cfg 2, 싱크 최적 3~5 (템플릿 기본 1=무유도)
+    _ascale = job_input.get("audio_scale")
+    _acfg = job_input.get("audio_cfg_scale")
+    if _ascale is not None or _acfg is not None:
+        for _nid, _node in prompt.items():
+            if _node.get("class_type", "") == "MultiTalkWav2VecEmbeds":
+                if _ascale is not None:
+                    _node["inputs"]["audio_scale"] = float(_ascale)
+                    logger.info(f"[PATCH] node {_nid} MultiTalkWav2VecEmbeds.audio_scale={_ascale}")
+                if _acfg is not None:
+                    _node["inputs"]["audio_cfg_scale"] = float(_acfg)
+                    logger.info(f"[PATCH] node {_nid} MultiTalkWav2VecEmbeds.audio_cfg_scale={_acfg}")
+
     # 다중 인물용 두 번째 오디오 설정
     if person_count == "multi":
         # 워크플로우 타입에 따라 두 번째 오디오 노드 설정
