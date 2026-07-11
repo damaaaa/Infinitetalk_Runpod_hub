@@ -483,8 +483,9 @@ def handler(job):
     _bts = job_input.get("blocks_to_swap")
     _steps = job_input.get("steps")            # 립싱크 품질: 6(기본,distill) → 8~10 올리면 싱크 타이트
     _cfg = job_input.get("cfg")                # distill 끄고 풀품질 갈 때만 (예: 5)
+    _seed = job_input.get("seed")              # 리롤용 — 워크플로우 기본 seed=2 고정이라 이거 없으면 같은 입력=같은 출력
     _lora_strength = job_input.get("lora_strength")  # lightx2v distill LoRA 강도 (기본 1.0)
-    if any(v is not None for v in (_fo, _bts, _steps, _cfg, _lora_strength)):
+    if any(v is not None for v in (_fo, _bts, _steps, _cfg, _lora_strength, _seed)):
         for _nid, _node in prompt.items():
             _ct = _node.get("class_type", "")
             if _ct == "WanVideoSampler":
@@ -497,6 +498,9 @@ def handler(job):
                 if _cfg is not None:
                     _node["inputs"]["cfg"] = float(_cfg)
                     logger.info(f"[PATCH] node {_nid} WanVideoSampler.cfg={_cfg}")
+                if _seed is not None:
+                    _node["inputs"]["seed"] = int(_seed)
+                    logger.info(f"[PATCH] node {_nid} WanVideoSampler.seed={_seed}")
             if _ct == "WanVideoBlockSwap" and _bts is not None:
                 _node["inputs"]["blocks_to_swap"] = int(_bts)
                 logger.info(f"[PATCH] node {_nid} WanVideoBlockSwap.blocks_to_swap={_bts}")
