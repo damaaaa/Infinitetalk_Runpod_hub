@@ -316,7 +316,7 @@ def calculate_max_frames_from_audio(wav_path, wav_path_2=None, fps=25):
     return max_frames
 
 
-def handler(job):
+def _handler_impl(job):
     job_input = job.get("input", {})
 
     # job_input을 로깅할 때 base64 데이터는 truncate해서 출력
@@ -658,6 +658,21 @@ def handler(job):
         except Exception as e:
             logger.error(f"❌ Base64 인코딩 실패: {e}")
             return {"error": f"Base64 인코딩 실패: {e}"}
+
+
+def handler(job):
+    """[PATCH 2026-07-20] 실패 시 refresh_worker=True — 고장난 워커가 대기 풀에 남아
+    재시도 잡까지 연속 실패시키는 '좀비 워커' 고리 차단 (0715 WS 사망·0720 2연속 즉사 근본대책).
+    RunPod은 이 키를 보면 잡 종료 후 해당 워커를 폐기하고 새 워커(=새 호스트)로 교체한다."""
+    try:
+        result = _handler_impl(job)
+    except Exception as e:
+        logger.error(f"handler 예외 — 워커 리프레시 요청: {e}")
+        return {"error": str(e), "refresh_worker": True}
+    if isinstance(result, dict) and "error" in result:
+        logger.error("handler 에러 반환 — 워커 리프레시 요청")
+        result["refresh_worker"] = True
+    return result
 
 
 runpod.serverless.start({"handler": handler})
